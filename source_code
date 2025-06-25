@@ -1,0 +1,194 @@
+package some;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+
+public class TicTacToe extends JFrame implements ActionListener {
+    private JButton[][] buttons = new JButton[3][3];
+    private boolean isPlayerXTurn = true;
+    private boolean isPvEMode = true;
+    private boolean isGameOver = false;
+    private JLabel statusLabel;
+    private int xWins = 0, oWins = 0, draws = 0;
+    private JLabel scoreLabel;
+
+    public TicTacToe() {
+        setTitle("Tic Tac Toe");
+        setIconImage(new ImageIcon("src/java_logo.png").getImage()); 
+        setSize(400, 500);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        // Status bar at top
+        statusLabel = new JLabel("Tic Tac Toe - Player X's Turn", JLabel.CENTER);
+        statusLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        statusLabel.setOpaque(true);
+        statusLabel.setBackground(Color.DARK_GRAY);
+        statusLabel.setForeground(Color.WHITE);
+        add(statusLabel, BorderLayout.NORTH);
+
+        // Game board
+        JPanel boardPanel = new JPanel(new GridLayout(3, 3));
+        Font buttonFont = new Font("Arial", Font.BOLD, 48);
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                buttons[i][j] = new JButton("");
+                buttons[i][j].setFont(buttonFont);
+                buttons[i][j].setFocusPainted(false);
+                buttons[i][j].addActionListener(this);
+                boardPanel.add(buttons[i][j]);
+            }
+        }
+        add(boardPanel, BorderLayout.CENTER);
+
+        // Bottom controls
+        JPanel bottomPanel = new JPanel(new GridLayout(2, 1));
+
+        JPanel controlPanel = new JPanel();
+        JButton newGameBtn = new JButton("New Game");
+        JButton modeToggleBtn = new JButton("Switch PvP/PvE");
+        newGameBtn.addActionListener(e -> resetGame());
+        modeToggleBtn.addActionListener(e -> {
+            isPvEMode = !isPvEMode;
+            resetGame();
+        });
+        controlPanel.add(newGameBtn);
+        controlPanel.add(modeToggleBtn);
+
+        JPanel scorePanel = new JPanel();
+        scoreLabel = new JLabel("X Wins: 0 | O Wins: 0 | Draws: 0");
+        scorePanel.add(scoreLabel);
+
+        bottomPanel.add(scorePanel);
+        bottomPanel.add(controlPanel);
+        add(bottomPanel, BorderLayout.SOUTH);
+
+        setVisible(true);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (isGameOver) return;
+
+        JButton clicked = (JButton) e.getSource();
+        if (clicked.getText().equals("") && isPlayerXTurn) {
+            clicked.setText("X");
+            clicked.setForeground(Color.RED);
+            isPlayerXTurn = false;
+            checkMatch();
+
+            if (!isGameOver && isPvEMode) {
+                makeAIMove(); // Let AI play for O
+            }
+        } else if (clicked.getText().equals("") && !isPvEMode && !isPlayerXTurn) {
+            clicked.setText("O");
+            clicked.setForeground(Color.BLUE);
+            isPlayerXTurn = true;
+            checkMatch();
+        }
+    }
+
+    public void makeAIMove() {
+        Timer timer = new Timer(500, e -> {
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (buttons[i][j].getText().equals("")) {
+                        buttons[i][j].setText("O");
+                        buttons[i][j].setForeground(Color.BLUE);
+                        isPlayerXTurn = true;
+                        checkMatch();
+                        ((Timer) e.getSource()).stop();
+                        return;
+                    }
+                }
+            }
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    public void checkMatch() {
+        String[][] grid = new String[3][3];
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                grid[i][j] = buttons[i][j].getText();
+
+        // Check rows, columns, diagonals
+        for (int i = 0; i < 3; i++) {
+            if (!grid[i][0].equals("") && grid[i][0].equals(grid[i][1]) && grid[i][1].equals(grid[i][2])) {
+                highlightWin(buttons[i][0], buttons[i][1], buttons[i][2]);
+                endGame(grid[i][0]);
+                return;
+            }
+            if (!grid[0][i].equals("") && grid[0][i].equals(grid[1][i]) && grid[1][i].equals(grid[2][i])) {
+                highlightWin(buttons[0][i], buttons[1][i], buttons[2][i]);
+                endGame(grid[0][i]);
+                return;
+            }
+        }
+
+        if (!grid[0][0].equals("") && grid[0][0].equals(grid[1][1]) && grid[1][1].equals(grid[2][2])) {
+            highlightWin(buttons[0][0], buttons[1][1], buttons[2][2]);
+            endGame(grid[0][0]);
+            return;
+        }
+        if (!grid[0][2].equals("") && grid[0][2].equals(grid[1][1]) && grid[1][1].equals(grid[2][0])) {
+            highlightWin(buttons[0][2], buttons[1][1], buttons[2][0]);
+            endGame(grid[0][2]);
+            return;
+        }
+
+        // Check for draw
+        boolean draw = true;
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                if (buttons[i][j].getText().equals(""))
+                    draw = false;
+
+        if (draw) {
+            isGameOver = true;
+            draws++;
+            scoreLabel.setText("X Wins: " + xWins + " | O Wins: " + oWins + " | Draws: " + draws);
+            statusLabel.setText("It's a Draw!");
+            statusLabel.setBackground(Color.GRAY);
+        }
+    }
+
+    private void highlightWin(JButton b1, JButton b2, JButton b3) {
+        b1.setBackground(Color.GREEN);
+        b2.setBackground(Color.GREEN);
+        b3.setBackground(Color.GREEN);
+    }
+
+    private void endGame(String winner) {
+        isGameOver = true;
+        if (winner.equals("X")) {
+            xWins++;
+            statusLabel.setText("Player X Wins!");
+            statusLabel.setBackground(new Color(255, 80, 80));
+        } else {
+            oWins++;
+            statusLabel.setText("Player O Wins!");
+            statusLabel.setBackground(new Color(80, 80, 255));
+        }
+        scoreLabel.setText("X Wins: " + xWins + " | O Wins: " + oWins + " | Draws: " + draws);
+    }
+
+    public void resetGame() {
+        isGameOver = false;
+        isPlayerXTurn = true;
+        statusLabel.setText("Tic Tac Toe - Player X's Turn");
+        statusLabel.setBackground(Color.DARK_GRAY);
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++) {
+                buttons[i][j].setText("");
+                buttons[i][j].setBackground(null);
+            }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(TicTacToe::new);
+    }
+}
